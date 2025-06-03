@@ -56,12 +56,22 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+uint32_t on_mo_time = 20 * 1000 ; // 上次按键扫描时间
+
+uint8_t mo_long_state = 0; // 按键状态
+
+void Button_LongCallback()
+{
+  mo_long_state = 1; // 设置长按状态
+}
+
 void Button_ClickCallback(uint8_t count)
 {
     // 按键点击回调函数
     // 这里可以添加按键点击后的处理逻辑
-    if (count == 1) {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8); // 翻转LED状态
+    if (count == 1) 
+    {
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8); // 翻转LED状态
     } 
     else if (count == 3)
     {
@@ -110,7 +120,8 @@ int main(void)
 
   Button_Init(&myButton, GPIOA, GPIO_PIN_3); // 初始化按键，连接到PC3
 
-  Button_SetShortPressCallback(&myButton, Button_ClickCallback);
+  Button_SetClickCallback(&myButton, Button_ClickCallback);
+  Button_SetLongPressCallback(&myButton, Button_LongCallback); // 设置长按回调函数，如果不需要可以传NULL
 
   /* USER CODE END 2 */
 
@@ -118,6 +129,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+    if (mo_long_state == 1)
+    {
+      HAL_TIM_Base_Stop_IT(&htim17);
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 设置PA8低电平 RE
+      HAL_Delay(on_mo_time); // 延时20秒
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 设置PA8低电平 
+      HAL_TIM_Base_Start_IT(&htim17); // 重新启动定时器
+      mo_long_state = 0; // 重置长按状态
+    }
+    
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

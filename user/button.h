@@ -1,7 +1,7 @@
 #ifndef __BUTTON_H
 #define __BUTTON_H
 
-#include "stm32f1xx_hal.h"
+#include "stm32f0xx_hal.h"
 #include <stdint.h>
 
 // 按键结构体
