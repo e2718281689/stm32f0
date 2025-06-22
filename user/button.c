@@ -47,7 +47,7 @@ void Button_SetInactiveCallback(Button_t *btn, void (*callback)(void), uint32_t 
     btn->inactive_time = time;
 }
 
-// 此函数应放在一个定时器中断中，例如每 10ms 调用一次
+// 此函数应放在一个定时器中断中，例如每 1ms 调用一次
 void Button_Scan(Button_t *btn)
 {
     // 假设按键按下为低电平，松开为高电平
@@ -64,7 +64,7 @@ void Button_Scan(Button_t *btn)
             btn->press_time = 0;
             btn->long_press_triggered = 0;
         } else { // 持续按住
-            btn->press_time += 10; // 假设每 10ms 调用一次
+            btn->press_time += 1; // 假设每 1ms 调用一次
             
             // 检查是否达到长按时间，且长按事件尚未触发
             if (btn->press_time >= LONG_PRESS_TIME && !btn->long_press_triggered) {
@@ -105,7 +105,7 @@ void Button_Scan(Button_t *btn)
 
         // --- 3. 无活动判断逻辑 (仅在按键松开时计时) ---
         if (btn->on_inactive && btn->inactive_time > 0 && !btn->inactive_triggered) {
-            btn->inactive_timer += 10; // 累加无活动时间
+            btn->inactive_timer += 1; // 累加无活动时间
             if (btn->inactive_timer >= btn->inactive_time) {
                 btn->on_inactive();
                 btn->inactive_triggered = 1; // 标记为已触发，防止重复调用
