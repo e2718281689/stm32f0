@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "button.h"
+#include "rgb_led.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,6 +35,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 Button_t myButton;
+RGB_LED_t my_rgb_led;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -62,7 +64,8 @@ uint8_t mo_long_state = 0; // 按键状态
 
 void Button_LongCallback()
 {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 打开LED
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 打开monitor
+    RGB_LED_StartWhiteBreath(&my_rgb_led, 2000);// 启动白色呼吸灯效果
 }
 
 void Button_ClickCallback(uint8_t count)
@@ -78,7 +81,8 @@ void Button_InactiveCallback()
 {
     // 无活动回调函数
     // 这里可以添加无活动后的处理逻辑
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 打开LED
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 关闭monitor 
+    RGB_LED_StartFlash(&my_rgb_led, 255, 0, 0, 200, 200);
 }
 void Button_LongPressReleaseCallback()
 {
@@ -128,6 +132,11 @@ int main(void)
   Button_SetLongPressCallback(&myButton, Button_LongCallback); // 设置长按回调函数，如果不需要可以传NULL
   Button_SetInactiveCallback(&myButton, Button_InactiveCallback, 5000); // 设置无活动回调函数，如果不需要可以传NULL和0
   Button_SetLongPressReleaseCallback(&myButton, Button_LongPressReleaseCallback); // 设置长按抬起回调函数，如果不需要可以传NULL
+
+
+  RGB_LED_Init(&my_rgb_led, GPIOA, GPIO_PIN_10, GPIOA, GPIO_PIN_11, GPIOA, GPIO_PIN_12);
+
+  RGB_LED_StartWhiteBreath(&my_rgb_led, 2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -198,6 +207,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
         // 每 10ms 进一次，可用于执行按键扫描等任务
         Button_Scan(&myButton);
+        RGB_LED_Update(&my_rgb_led);
         // Button_EventHandler(&myButton);
     }
 }
