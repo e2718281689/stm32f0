@@ -62,7 +62,7 @@ uint8_t mo_long_state = 0; // 按键状态
 
 void Button_LongCallback()
 {
-  mo_long_state = 1; // 设置长按状态
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 打开LED
 }
 
 void Button_ClickCallback(uint8_t count)
@@ -71,17 +71,21 @@ void Button_ClickCallback(uint8_t count)
     // 这里可以添加按键点击后的处理逻辑
     if (count == 1) 
     {
-        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8); // 翻转LED状态
+
     } 
-    else if (count == 3)
-    {
-      /* code */
-    }
-    else if (count == 10)
-    {
-      /* code */
-    }
 }
+void Button_InactiveCallback()
+{
+    // 无活动回调函数
+    // 这里可以添加无活动后的处理逻辑
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 打开LED
+}
+void Button_LongPressReleaseCallback()
+{
+    // 长按抬起回调函数
+    // 这里可以添加长按抬起后的处理逻辑
+}
+
 
 
 /* USER CODE END 0 */
@@ -120,9 +124,10 @@ int main(void)
 
   Button_Init(&myButton, GPIOA, GPIO_PIN_3); // 初始化按键，连接到PC3
 
-  Button_SetClickCallback(&myButton, Button_ClickCallback);
+  Button_SetShortPressCallback(&myButton, Button_ClickCallback);
   Button_SetLongPressCallback(&myButton, Button_LongCallback); // 设置长按回调函数，如果不需要可以传NULL
-
+  Button_SetInactiveCallback(&myButton, Button_InactiveCallback, 5000); // 设置无活动回调函数，如果不需要可以传NULL和0
+  Button_SetLongPressReleaseCallback(&myButton, Button_LongPressReleaseCallback); // 设置长按抬起回调函数，如果不需要可以传NULL
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -130,15 +135,6 @@ int main(void)
   while (1)
   {
 
-    if (mo_long_state == 1)
-    {
-      HAL_TIM_Base_Stop_IT(&htim17);
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 设置PA8低电平 RE
-      HAL_Delay(on_mo_time); // 延时20秒
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 设置PA8低电平 
-      HAL_TIM_Base_Start_IT(&htim17); // 重新启动定时器
-      mo_long_state = 0; // 重置长按状态
-    }
     
 
     /* USER CODE END WHILE */
