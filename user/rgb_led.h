@@ -6,10 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// --- 公共配置 ---
-#define SW_PWM_RESOLUTION   100  // 软件PWM的分辨率 (0-100)。值越高，亮度过渡越平滑，但要求Update函数调用更频繁。
-
-// --- 颜色定义 ---
+// --- 颜色定义 (保持不变) ---
 #define COLOR_RED       255, 0, 0
 #define COLOR_GREEN     0, 255, 0
 #define COLOR_BLUE      0, 0, 255
@@ -19,8 +16,13 @@
 #define COLOR_WHITE     255, 255, 255
 #define COLOR_OFF       0, 0, 0
 
+// --- LED连接方式枚举 (新增) ---
+typedef enum {
+    LED_CONNECTION_COMMON_CATHODE, // 共阴极 (高电平点亮, PWM占空比越大越亮)
+    LED_CONNECTION_COMMON_ANODE    // 共阳极 (低电平点亮, PWM占空比越大越暗)
+} LED_Connection_t;
 
-// --- 按键状态枚举 ---
+// --- LED模式枚举 (保持不变) ---
 typedef enum {
     LED_MODE_OFF,
     LED_MODE_STATIC,
@@ -29,26 +31,26 @@ typedef enum {
 } LED_Mode_t;
 
 
-// --- RGB LED 结构体 ---
+// --- RGB LED 结构体 (已修改) ---
 typedef struct {
-    // GPIO 配置
-    GPIO_TypeDef *r_port;
-    uint16_t r_pin;
-    GPIO_TypeDef *g_port;
-    uint16_t g_pin;
-    GPIO_TypeDef *b_port;
-    uint16_t b_pin;
+    // 硬件PWM配置
+    TIM_HandleTypeDef *htim_r;    // R通道的定时器句柄
+    uint32_t           channel_r; // R通道的定时器通道 (例如: TIM_CHANNEL_1)
+    TIM_HandleTypeDef *htim_g;    // G通道的定时器句柄
+    uint32_t           channel_g; // G通道的定时器通道
+    TIM_HandleTypeDef *htim_b;    // B通道的定时器句柄
+    uint32_t           channel_b; // B通道的定时器通道
+    
+    // LED连接方式
+    LED_Connection_t connection_type; 
 
     // 当前模式
     LED_Mode_t mode;
 
-    // 软件PWM相关 (内部使用)
-    uint8_t pwm_counter;
-    uint8_t r_duty; // 0-SW_PWM_RESOLUTION
-    uint8_t g_duty; // 0-SW_PWM_RESOLUTION
-    uint8_t b_duty; // 0-SW_PWM_RESOLUTION
-
-    // 状态参数
+    // 动态效果的状态参数
+    uint8_t  target_r;    // 闪烁模式的目标颜色
+    uint8_t  target_g;
+    uint8_t  target_b;
     uint32_t timer_start; // 通用计时器起点
     uint32_t period;      // 呼吸或闪烁的总周期
     uint32_t on_time;     // 闪烁的亮灯时间
@@ -56,24 +58,27 @@ typedef struct {
 } RGB_LED_t;
 
 /**
- * @brief 初始化RGB LED的GPIO引脚和内部状态
+ * @brief 初始化RGB LED的硬件PWM通道和内部状态
  * @param led 指向RGB_LED_t结构体的指针
- * @param r_port R通道的GPIO端口
- * @param r_pin  R通道的GPIO引脚
- * @param g_port G通道的GPIO端口
- * @param g_pin  G通道的GPIO引脚
- * @param b_port B通道的GPIO端口
- * @param b_pin  B通道的GPIO引脚
+ * @param connection LED的连接方式 (共阴/共阳)
+ * @param htim_r R通道的定时器句柄
+ * @param channel_r R通道的定时器通道
+ * @param htim_g G通道的定时器句柄
+ * @param channel_g G通道的定时器通道
+ * @param htim_b B通道的定时器句柄
+ * @param channel_b B通道的定时器通道
+ * @note  三个通道可以使用同一个定时器的不同通道，也可以使用不同定时器。
+ *        定时器和引脚的初始化应在外部完成 (例如在CubeMX中配置)。
  */
-void RGB_LED_Init(RGB_LED_t *led, GPIO_TypeDef *r_port, uint16_t r_pin,
-                  GPIO_TypeDef *g_port, uint16_t g_pin,
-                  GPIO_TypeDef *b_port, uint16_t b_pin);
+void RGB_LED_Init(RGB_LED_t *led, LED_Connection_t connection,
+                  TIM_HandleTypeDef *htim_r, uint32_t channel_r,
+                  TIM_HandleTypeDef *htim_g, uint32_t channel_g,
+                  TIM_HandleTypeDef *htim_b, uint32_t channel_b);
 
 /**
  * @brief 设置LED为常亮颜色
- * @note  颜色亮度值范围 0-255，会被自动映射到 0-SW_PWM_RESOLUTION
  * @param led 指向RGB_LED_t结构体的指针
- * @param r, g, b 8位的RGB颜色值
+ * @param r, g, b 8位的RGB颜色值 (0-255)
  */
 void RGB_LED_SetStaticColor(RGB_LED_t *led, uint8_t r, uint8_t g, uint8_t b);
 
@@ -102,9 +107,8 @@ void RGB_LED_StartFlash(RGB_LED_t *led, uint8_t r, uint8_t g, uint8_t b,
 
 /**
  * @brief 更新LED状态，实现动态效果 (呼吸/闪烁)
- * @note  !!! 关键函数 !!!
- * 必须放在一个高频、精确的定时器中断中调用，例如 SysTick 中断。
- * 推荐调用频率: 1ms (1000Hz)
+ * @note  此函数不再需要高频调用。放在主循环的 while(1) 中即可。
+ *        例如每10-20ms调用一次，足以保证动画平滑。
  */
 void RGB_LED_Update(RGB_LED_t *led);
 

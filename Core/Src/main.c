@@ -35,7 +35,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 Button_t myButton;
-RGB_LED_t my_rgb_led;
+Button_t myButton2;
+RGB_LED_t my_led;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,7 +68,7 @@ void Button_LongCallback()
 
     mo_long_state = 1;
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 打开monitor
-    RGB_LED_StartWhiteBreath(&my_rgb_led, 2000);// 启动白色呼吸灯效果
+    RGB_LED_StartWhiteBreath(&my_led, 2000);// 启动白色呼吸灯效果
 }
 
 void Button_ClickCallback(uint8_t count)
@@ -87,7 +88,7 @@ void Button_InactiveCallback()
          // 无活动回调函数
         // 这里可以添加无活动后的处理逻辑
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 关闭monitor 
-        RGB_LED_StartFlash(&my_rgb_led, 255, 0, 255, 200, 200);
+        RGB_LED_StartFlash(&my_led, 255, 0, 0, 200, 200);
         mo_long_state = 0; // 重置状态
     }
     
@@ -98,6 +99,21 @@ void Button_LongPressReleaseCallback()
     // 这里可以添加长按抬起后的处理逻辑
 }
 
+
+
+void Button2_longpress_handler() 
+{
+    // 按下时执行的代码...
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // 打开monitor
+    RGB_LED_StartFlash(&my_led, 0, 0, 255, 400, 400);
+}
+
+void Button2_release_handler() 
+{
+    // 抬起时执行的代码...
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // 关闭monitor 
+    RGB_LED_StartFlash(&my_led, 255, 0, 0, 200, 200);
+}
 
 
 /* USER CODE END 0 */
@@ -132,6 +148,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM17_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
   Button_Init(&myButton, GPIOA, GPIO_PIN_3); // 初始化按键，连接到PC3
@@ -141,10 +158,18 @@ int main(void)
   Button_SetInactiveCallback(&myButton, Button_InactiveCallback, 5000); // 设置无活动回调函数，如果不需要可以传NULL和0
   Button_SetLongPressReleaseCallback(&myButton, Button_LongPressReleaseCallback); // 设置长按抬起回调函数，如果不需要可以传NULL
 
+  Button_Init(&myButton2, GPIOA, GPIO_PIN_4); // 初始化按键，连接到PC3
 
-  RGB_LED_Init(&my_rgb_led, GPIOA, GPIO_PIN_11, GPIOA, GPIO_PIN_10, GPIOA, GPIO_PIN_12);
+  Button_SetPressCallback(&myButton2, Button2_longpress_handler);
+  Button_SetReleaseCallback(&myButton2, Button2_release_handler);
 
-  RGB_LED_StartWhiteBreath(&my_rgb_led, 2000);
+
+  RGB_LED_Init(&my_led, LED_CONNECTION_COMMON_ANODE, 
+              &htim1, TIM_CHANNEL_2,
+              &htim1, TIM_CHANNEL_3,
+              &htim1, TIM_CHANNEL_4);
+
+  RGB_LED_StartWhiteBreath(&my_led, 2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -153,7 +178,7 @@ int main(void)
   {
 
     
-    RGB_LED_Update(&my_rgb_led);
+    
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -215,7 +240,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
         // 每 1ms 进一次，可用于执行按键扫描等任务
         Button_Scan(&myButton);
-        // Button_EventHandler(&myButton);
+        Button_Scan(&myButton2);
+        RGB_LED_Update(&my_led);
     }
 }
 

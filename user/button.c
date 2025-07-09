@@ -1,8 +1,8 @@
-/* === C代码文件: button.c (修改后) === */
+/* === C代码文件: button.c (已添加按下/抬起回调) === */
 #include "button.h"
 
 #define LONG_PRESS_TIME    500  // 长按阈值 (ms)
-#define DEBOUNCE_TIME        50  // 消抖时间 (ms)
+#define DEBOUNCE_TIME       50  // 消抖时间 (ms)
 
 void Button_Init(Button_t *btn, GPIO_TypeDef *port, uint16_t pin)
 {
@@ -13,6 +13,8 @@ void Button_Init(Button_t *btn, GPIO_TypeDef *port, uint16_t pin)
     btn->long_press_triggered = 0;
 
     // 回调函数指针初始化
+    btn->on_press = 0;               // 新增
+    btn->on_release = 0;             // 新增
     btn->on_short_press = 0;
     btn->on_long_press = 0;
     btn->on_long_press_release = 0;
@@ -22,6 +24,18 @@ void Button_Init(Button_t *btn, GPIO_TypeDef *port, uint16_t pin)
     btn->inactive_time = 0;
     btn->inactive_timer = 0;
     btn->inactive_triggered = 0;
+}
+
+// 新增：设置按下回调函数
+void Button_SetPressCallback(Button_t *btn, void (*callback)(void))
+{
+    btn->on_press = callback;
+}
+
+// 新增：设置抬起回调函数
+void Button_SetReleaseCallback(Button_t *btn, void (*callback)(void))
+{
+    btn->on_release = callback;
 }
 
 void Button_SetShortPressCallback(Button_t *btn, void (*callback)(void))
@@ -34,13 +48,11 @@ void Button_SetLongPressCallback(Button_t *btn, void (*callback)(void))
     btn->on_long_press = callback;
 }
 
-// 新增：设置长按抬起回调函数
 void Button_SetLongPressReleaseCallback(Button_t *btn, void (*callback)(void))
 {
     btn->on_long_press_release = callback;
 }
 
-// 设置无活动回调函数 (保留)
 void Button_SetInactiveCallback(Button_t *btn, void (*callback)(void), uint32_t time)
 {
     btn->on_inactive = callback;
@@ -60,10 +72,17 @@ void Button_Scan(Button_t *btn)
         btn->inactive_timer = 0;
         btn->inactive_triggered = 0;
 
-        if (btn->last_level == GPIO_PIN_SET) { // 刚按下的瞬间
+        // 刚按下的瞬间 (下降沿)
+        if (btn->last_level == GPIO_PIN_SET) {
+            // --- 新增: 触发按下回调 ---
+            if (btn->on_press) {
+                btn->on_press();
+            }
             btn->press_time = 0;
             btn->long_press_triggered = 0;
-        } else { // 持续按住
+        } 
+        // 持续按住
+        else { 
             btn->press_time += 1; // 假设每 1ms 调用一次
             
             // 检查是否达到长按时间，且长按事件尚未触发
@@ -78,8 +97,13 @@ void Button_Scan(Button_t *btn)
     // --- 2. 按键松开期间的逻辑 ---
     else 
     {
-        // 刚松开的瞬间
+        // 刚松开的瞬间 (上升沿)
         if (btn->last_level == GPIO_PIN_RESET) {
+            // --- 新增: 触发抬起回调 ---
+            if (btn->on_release) {
+                btn->on_release();
+            }
+            
             // 任何按键活动都会重置无活动计时器
             btn->inactive_timer = 0;
             btn->inactive_triggered = 0;
